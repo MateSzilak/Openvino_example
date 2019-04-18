@@ -2,13 +2,13 @@
 # python openvino_real_time_object_detection.py --prototxt MobileNetSSD_deploy.prototxt --model MobileNetSSD_deploy.caffemodel
 
 # import the necessary packages
-from imutils.video import VideoStream
-from imutils.video import FPS
+
 import numpy as np
 import argparse
-import imutils
 import time
 import cv2
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 
 # construct the argument parse and parse the arguments
 #ap = argparse.ArgumentParser()
@@ -40,16 +40,19 @@ net.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)
 # initialize the video stream, allow the cammera sensor to warmup,
 # and initialize the FPS counter
 print("[INFO] starting video stream...")
-vs = VideoStream(usePiCamera=True).start()
-time.sleep(2.0)
-fps = FPS().start()
+
+camera = PiCamera()
+camera.resolution = (300, 300)
+camera.rotation = 270
+rawCapture = PiRGBArray(camera, size=(300, 300))
+
 
 # loop over the frames from the video stream
-while True:
+for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     # grab the frame from the threaded video stream and resize it
     # to have a maximum width of 400 pixels
-    frame = vs.read()
-    frame = imutils.resize(frame, width=400)
+    frame = f.array
+
 
     # grab the frame dimensions and convert it to a blob
     (h, w) = frame.shape[:2]
@@ -68,7 +71,7 @@ while True:
 
         # filter out weak detections by ensuring the `confidence` is
         # greater than the minimum confidence
-        if confidence > args["confidence"]:
+        if confidence > 0.2:
             # extract the index of the class label from the
             # `detections`, then compute the (x, y)-coordinates of
             # the bounding box for the object
@@ -88,18 +91,14 @@ while True:
     # show the output frame
     cv2.imshow("Frame", frame)
     key = cv2.waitKey(1) & 0xFF
-
+    f.truncate(0)
     # if the `q` key was pressed, break from the loop
     if key == ord("q"):
         break
 
     # update the FPS counter
-    fps.update()
 
 # stop the timer and display FPS information
-fps.stop()
-print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
-print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 
 # do a bit of cleanup
 cv2.destroyAllWindows()
