@@ -10,17 +10,15 @@ import cv2
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 
-# construct the argument parse and parse the arguments
-#ap = argparse.ArgumentParser()
-#ap.add_argument("-p", "--prototxt", required=True,
- #   help="path to Caffe 'deploy' prototxt file")
-#ap.add_argument("-m", "--model", required=True,
-#    help="path to Caffe pre-trained model")
-#ap.add_argument("-c", "--confidence", type=float, default=0.2,
- #   help="minimum probability to filter weak detections")
-#ap.add_argument("-u", "--movidius", type=bool, default=0,
- #   help="boolean indicating if the Movidius should be used")
-#args = vars(ap.parse_args())
+from picamera import PiCamera
+
+fps = ""
+detectfps = ""
+framecount = 0
+detectframecount = 0
+time1 = 0
+time2 = 0
+
 
 # initialize the list of class labels MobileNet SSD was trained to
 # detect, then generate a set of bounding box colors for each class
@@ -52,7 +50,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     # grab the frame from the threaded video stream and resize it
     # to have a maximum width of 400 pixels
     frame = f.array
-
+    t1 = time.perf_counter()
 
     # grab the frame dimensions and convert it to a blob
     (h, w) = frame.shape[:2]
@@ -89,6 +87,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
 
     # show the output frame
+    cv2.putText(frame, fps, (300-170,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (38,0,255), 1, cv2.LINE_AA)
     cv2.imshow("Frame", frame)
     key = cv2.waitKey(1) & 0xFF
     f.truncate(0)
@@ -96,6 +95,19 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     if key == ord("q"):
         break
 
+
+
+    # FPS calculation
+    framecount += 1
+    if framecount >= 15:
+        fps       = "{:.1f} FPS".format(time1/15)
+        framecount = 0
+        time1 = 0
+        time2 = 0
+    t2 = time.perf_counter()
+    elapsedTime = t2-t1
+    time1 += 1/elapsedTime
+    time2 += elapsedTime
     # update the FPS counter
 
 # stop the timer and display FPS information
