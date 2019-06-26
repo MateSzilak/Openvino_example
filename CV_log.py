@@ -7,10 +7,11 @@ import numpy as np
 import argparse
 import time
 import cv2
+import datetime
 from picamera.array import PiRGBArray
 from picamera import PiCamera
-
-from picamera import PiCamera
+import os
+import random
 
 fps = ""
 detectfps = ""
@@ -18,6 +19,14 @@ framecount = 0
 detectframecount = 0
 time1 = 0
 time2 = 0
+
+
+#generating a random number, creating a folder
+random_number = random.randint(100,999)
+
+os.makedirs("/home/pi/Python_dev/Openvino_example/%d" % random_number )
+file = open("/home/pi/Python_dev/Openvino_example/%d/log.txt" % random_number, "w") 
+
 
 
 # initialize the list of class labels MobileNet SSD was trained to
@@ -44,11 +53,17 @@ camera.resolution = (300, 300)
 camera.rotation = 270
 rawCapture = PiRGBArray(camera, size=(300, 300))
 
+counter = 0
 
 # loop over the frames from the video stream
 for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     # grab the frame from the threaded video stream and resize it
     # to have a maximum width of 400 pixels
+    
+    counter = counter + 1
+    if counter == 100:
+        break
+
     frame = f.array
     t1 = time.perf_counter()
 
@@ -61,6 +76,12 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     net.setInput(blob)
     detections = net.forward()
 
+    label = ""
+    startX = 0
+    startY = 0
+    endX = 0
+    endY = 0
+    confidence = 0
     # loop over the detections
     for i in np.arange(0, detections.shape[2]):
         # extract the confidence (i.e., probability) associated with
@@ -86,32 +107,16 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
             cv2.putText(frame, label, (startX, y),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
 
+    #adding time&date
+    now = datetime.datetime.now()    
+    time_string = now.strftime("%Y-%m-%d %H:%M:%S") #print on the pic
+    time_micro = now.strftime('%Y-%m-%d %H:%M:%S.%f') #for the log
+    print(counter)
+    
     # show the output frame
-    cv2.putText(frame, fps, (300-170,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (38,0,255), 1, cv2.LINE_AA)
-    cv2.imshow("Frame", frame)
-    key = cv2.waitKey(1) & 0xFF
+    cv2.putText(frame, time_string, (5,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (38,0,255), 1, cv2.LINE_AA)
+    cv2.imwrite('/home/pi/Python_dev/Openvino_example/%d/%d.jpg' % (random_number, counter), frame) 
     f.truncate(0)
-    # if the `q` key was pressed, break from the loop
-    if key == ord("q"):
-        break
+    file.write("%s type: %s confidence: %d  startX, startY: (%d, %d) endX, endY: (%d, %d)\n" % (time_micro, label, confidence, startX, startY, endX, endY)) 
 
-
-
-    # FPS calculation
-    framecount += 1
-    if framecount >= 15:
-        fps       = "{:.1f} FPS".format(time1/15)
-        framecount = 0
-        time1 = 0
-        time2 = 0
-    t2 = time.perf_counter()
-    elapsedTime = t2-t1
-    time1 += 1/elapsedTime
-    time2 += elapsedTime
-    # update the FPS counter
-
-# stop the timer and display FPS information
-
-# do a bit of cleanup
-cv2.destroyAllWindows()
-vs.stop()
+file.close() 
