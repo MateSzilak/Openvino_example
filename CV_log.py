@@ -12,6 +12,7 @@ from picamera.array import PiRGBArray
 from picamera import PiCamera
 import os
 import random
+import can
 
 fps = ""
 detectfps = ""
@@ -54,6 +55,13 @@ camera.rotation = 270
 rawCapture = PiRGBArray(camera, size=(300, 300))
 
 counter = 0
+
+#initialize can
+os.system('sudo ip link set can0 type can bitrate 115800')
+os.system('sudo ifconfig can0 up')
+can0 = can.interface.Bus(channel = 'can0', bustype = 'socketcan_ctypes')
+
+can_counter = 0
 
 # loop over the frames from the video stream
 for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
@@ -111,12 +119,18 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     now = datetime.datetime.now()    
     time_string = now.strftime("%Y-%m-%d %H:%M:%S") #print on the pic
     time_micro = now.strftime('%Y-%m-%d %H:%M:%S.%f') #for the log
-    print(counter)
-    
+    time_can = now.strftime('%S%f')
+
     # show the output frame
     cv2.putText(frame, time_string, (5,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (38,0,255), 1, cv2.LINE_AA)
     cv2.imwrite('/home/pi/Python_dev/Openvino_example/%d/%d.jpg' % (random_number, counter), frame) 
     f.truncate(0)
-    file.write("%s type: %s confidence: %d  startX, startY: (%d, %d) endX, endY: (%d, %d)\n" % (time_micro, label, confidence, startX, startY, endX, endY)) 
+    file.write("%s type: %s confidence: %d  startX, startY: (%d, %d) endX, endY: (%d, %d)\n" % (time_micro, label, confidence, startX, startY, endX, endY))
+    can_counter = can_counter + 1
+    if( can_counter == 5 ):
+        msg = can.Message(arbitration_id=0x123, data=list(map(int, bytes(time_can, encoding='utf8'))), extended_id=False)
+        can0.send(msg)
+        can_counter = 0
 
 file.close() 
+os.system('sudo ifconfig can0 down')

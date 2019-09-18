@@ -10,7 +10,6 @@ import cv2
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 
-from picamera import PiCamera
 
 fps = ""
 detectfps = ""
@@ -33,8 +32,8 @@ print("[INFO] loading model...")
 net = cv2.dnn.readNetFromCaffe('./MobileNetSSD_deploy.prototxt', './MobileNetSSD_deploy.caffemodel')
 
 # specify the target device as the Myriad processor on the NCS
-net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
-net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+net.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)
+net.setPreferableBackend(cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE)
 
 # initialize the video stream, allow the cammera sensor to warmup,
 # and initialize the FPS counter
@@ -88,12 +87,12 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
 
     # show the output frame
+    cv2.namedWindow('PICAM', cv2.WINDOW_AUTOSIZE)
     cv2.putText(frame, fps, (300-170,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (38,0,255), 1, cv2.LINE_AA)
     cv2.imshow("Frame", frame)
     key = cv2.waitKey(1) & 0xFF
     f.truncate(0)
-    # if the `q` key was pressed, break from the loop
-    if key == ord("q"):
+    if 'a' == key:
         break
 
 
@@ -115,4 +114,3 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
 
 # do a bit of cleanup
 cv2.destroyAllWindows()
-vs.stop()
