@@ -57,11 +57,11 @@ rawCapture = PiRGBArray(camera, size=(300, 300))
 counter = 0
 
 #initialize can
-os.system('sudo ip link set can0 type can bitrate 115800')
-os.system('sudo ifconfig can0 up')
-can0 = can.interface.Bus(channel = 'can0', bustype = 'socketcan_ctypes')
+#os.system('sudo ip link set can0 type can bitrate 500000')
+#os.system('sudo ifconfig can0 up')
+#can0 = can.interface.Bus(channel = 'can0', bustype = 'socketcan_ctypes')
 
-can_counter = 0
+#can_counter = 0
 
 # loop over the frames from the video stream
 for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
@@ -69,7 +69,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     # to have a maximum width of 400 pixels
     
     counter = counter + 1
-    if counter == 100:
+    if counter == 5000:
         break
 
     frame = f.array
@@ -90,6 +90,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     endX = 0
     endY = 0
     confidence = 0
+    StringPuffer = ''
     # loop over the detections
     for i in np.arange(0, detections.shape[2]):
         # extract the confidence (i.e., probability) associated with
@@ -114,6 +115,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
+            StringPuffer = StringPuffer + ' ' + str(label)+ ' ' +str(confidence)+ ' startX: ' + str(startX)+ ' startY: ' + str(startY)+ ' endX: ' + str(endX)+ ' endY: ' + str(endY)
 
     #adding time&date
     now = datetime.datetime.now()    
@@ -125,12 +127,13 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     cv2.putText(frame, time_string, (5,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (38,0,255), 1, cv2.LINE_AA)
     cv2.imwrite('/home/pi/Python_dev/Openvino_example/%d/%d.jpg' % (random_number, counter), frame) 
     f.truncate(0)
-    file.write("%s type: %s confidence: %d  startX, startY: (%d, %d) endX, endY: (%d, %d)\n" % (time_micro, label, confidence, startX, startY, endX, endY))
-    can_counter = can_counter + 1
-    if( can_counter == 5 ):
-        msg = can.Message(arbitration_id=0x123, data=list(map(int, bytes(time_can, encoding='utf8'))), extended_id=False)
-        can0.send(msg)
-        can_counter = 0
+    file.write("%s %s\n" % (time_micro, StringPuffer))
+    
+ #   can_counter = can_counter + 1
+ #   if( can_counter == 5 ):
+  #      msg = can.Message(arbitration_id=0x123, data=list(map(int, bytes(time_can, encoding='utf8'))), extended_id=False)
+  #      can0.send(msg)
+  #      can_counter = 0
 
 file.close() 
-os.system('sudo ifconfig can0 down')
+#os.system('sudo ifconfig can0 down')

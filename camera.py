@@ -12,4 +12,9 @@ rawCapture = PiRGBArray(camera)
 # allow the camera to warmup
 time.sleep(0.1)
  
-camera.capture('proba.jpg')
+for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+	frame = f.array
+	cv2.imshow("Frame", frame)
+	#f.truncate(0)
+	if 'a'==input("nyomj meg egy gombot"):
+       		break
